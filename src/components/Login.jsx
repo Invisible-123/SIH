@@ -16,6 +16,9 @@ const Login = () => {
     setIsLoading(true);
     setError('');
 
+    // Short delay to simulate network request
+    await new Promise(resolve => setTimeout(resolve, 500));
+
     const result = login(credentials);
     
     if (result.success) {
@@ -95,7 +98,7 @@ const Login = () => {
                   value={credentials.username}
                   onChange={(e) => setCredentials(prev => ({ ...prev, username: e.target.value }))}
                   className="pl-10 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Enter username"
+                  placeholder="Enter username or student name"
                   required
                 />
               </div>
@@ -143,7 +146,7 @@ const Login = () => {
               <p className="font-medium">Login Credentials:</p>
               <div className="space-y-1 text-xs">
                 <p><span className="font-medium">Admin:</span> Username: AY, Password: 12345</p>
-                <p><span className="font-medium">Student:</span> Any username, Password: student</p>
+                <p><span className="font-medium">Student:</span> Use a student's full name (from the Admin panel) and Password: student</p>
               </div>
             </div>
           </div>

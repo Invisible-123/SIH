@@ -9,8 +9,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
-    <AuthProvider>
-      <DataProvider>
+    <DataProvider>
+      <AuthProvider>
         <Router>
           <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
             <Routes>
@@ -35,8 +35,8 @@ function App() {
             </Routes>
           </div>
         </Router>
-      </DataProvider>
-    </AuthProvider>
+      </AuthProvider>
+    </DataProvider>
   );
 }
 

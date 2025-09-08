@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { motion } from 'framer-motion';
@@ -9,11 +9,9 @@ import {
   MapPin, 
   GraduationCap,
   Search,
-  Filter,
-  Eye,
   Calendar,
-  Clock,
-  User
+  User,
+  AlertTriangle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -34,10 +32,9 @@ const StudentDashboard = () => {
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: GraduationCap },
-    { id: 'courses', label: 'Courses', icon: BookOpen },
-    { id: 'teachers', label: 'Teachers', icon: Users },
-    { id: 'rooms', label: 'Rooms', icon: MapPin },
-    { id: 'timetable', label: 'Timetable', icon: Calendar }
+    { id: 'timetable', label: 'My Timetable', icon: Calendar },
+    { id: 'courses', label: 'All Courses', icon: BookOpen },
+    { id: 'teachers', label: 'All Teachers', icon: Users },
   ];
 
   return (
@@ -97,19 +94,22 @@ const StudentDashboard = () => {
         {activeTab === 'overview' && <OverviewTab studentData={studentData} data={data} />}
         {activeTab === 'courses' && <CoursesTab data={data} searchTerm={searchTerm} setSearchTerm={setSearchTerm} />}
         {activeTab === 'teachers' && <TeachersTab data={data} searchTerm={searchTerm} setSearchTerm={setSearchTerm} />}
-        {activeTab === 'rooms' && <RoomsTab data={data} searchTerm={searchTerm} setSearchTerm={setSearchTerm} />}
-        {activeTab === 'timetable' && <TimetableTab studentData={studentData} data={data} />}
+        {activeTab === 'timetable' && <TimetableTab studentData={studentData} />}
       </div>
     </div>
   );
 };
 
 const OverviewTab = ({ studentData, data }) => {
+  if (!studentData) {
+    return <div className="text-center p-8 bg-white rounded-lg">Loading student data...</div>;
+  }
+
   const stats = [
-    { label: 'Enrolled Courses', value: studentData?.courses?.length || 0, color: 'blue' },
-    { label: 'Current Semester', value: studentData?.semester || 'N/A', color: 'green' },
-    { label: 'Department', value: studentData?.department || 'N/A', color: 'purple' },
-    { label: 'Total Credits', value: studentData?.courses?.reduce((acc, courseId) => {
+    { label: 'Enrolled Courses', value: studentData.courses?.length || 0, color: 'blue' },
+    { label: 'Current Semester', value: studentData.semester || 'N/A', color: 'green' },
+    { label: 'Department', value: studentData.department || 'N/A', color: 'purple' },
+    { label: 'Total Credits', value: studentData.courses?.reduce((acc, courseId) => {
       const course = data.courses.find(c => c.id === courseId);
       return acc + (course?.credits || 0);
     }, 0) || 0, color: 'orange' }
@@ -141,56 +141,28 @@ const OverviewTab = ({ studentData, data }) => {
       </div>
 
       {/* Student Profile */}
-      {studentData && (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
-        >
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Profile Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-600">Name</label>
-              <p className="text-gray-900">{studentData.name}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-600">Roll Number</label>
-              <p className="text-gray-900">{studentData.rollNumber}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-600">Email</label>
-              <p className="text-gray-900">{studentData.email}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-600">Phone</label>
-              <p className="text-gray-900">{studentData.phone}</p>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Quick Actions */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
       >
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Access</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all cursor-pointer">
-            <BookOpen className="w-8 h-8 text-blue-600 mb-2" />
-            <h4 className="font-medium text-gray-900">Course Catalog</h4>
-            <p className="text-sm text-gray-600">Browse available courses</p>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Profile Information</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-600">Name</label>
+            <p className="text-gray-900">{studentData.name}</p>
           </div>
-          <div className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all cursor-pointer">
-            <Calendar className="w-8 h-8 text-green-600 mb-2" />
-            <h4 className="font-medium text-gray-900">Class Schedule</h4>
-            <p className="text-sm text-gray-600">View your timetable</p>
+          <div>
+            <label className="block text-sm font-medium text-gray-600">Roll Number</label>
+            <p className="text-gray-900">{studentData.rollNumber}</p>
           </div>
-          <div className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all cursor-pointer">
-            <Users className="w-8 h-8 text-purple-600 mb-2" />
-            <h4 className="font-medium text-gray-900">Faculty Directory</h4>
-            <p className="text-sm text-gray-600">Contact information</p>
+          <div>
+            <label className="block text-sm font-medium text-gray-600">Email</label>
+            <p className="text-gray-900">{studentData.email}</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-600">Phone</label>
+            <p className="text-gray-900">{studentData.phone}</p>
           </div>
         </div>
       </motion.div>
@@ -329,93 +301,75 @@ const TeachersTab = ({ data, searchTerm, setSearchTerm }) => {
   );
 };
 
-const RoomsTab = ({ data, searchTerm, setSearchTerm }) => {
-  const filteredRooms = data.rooms.filter(room =>
-    room.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    room.type.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+const TimetableTab = ({ studentData }) => {
+  const { masterTimetable } = useData();
 
-  return (
-    <div className="space-y-6">
-      {/* Search */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search rooms..."
-            className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
+  const studentSchedule = useMemo(() => {
+    if (!masterTimetable || !studentData || !studentData.courses) {
+      return null;
+    }
+
+    const schedule = {};
+    const studentCourseIds = new Set(studentData.courses);
+    const { workingDays, timeSlots } = masterTimetable.settings;
+
+    workingDays.forEach(day => {
+      schedule[day] = {};
+      timeSlots.forEach(slot => {
+        const classInfo = masterTimetable.schedule[day]?.[slot];
+        if (classInfo && studentCourseIds.has(classInfo.course.id)) {
+          schedule[day][slot] = classInfo;
+        } else {
+          schedule[day][slot] = null;
+        }
+      });
+    });
+
+    return schedule;
+  }, [studentData, masterTimetable]);
+
+  if (!studentData) {
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-sm border text-center">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Student Data</h3>
+        <p className="text-gray-600">Please wait while we fetch your information.</p>
       </div>
-
-      {/* Rooms Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredRooms.map((room, index) => (
-          <motion.div
-            key={room.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all"
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900">{room.name}</h3>
-                <p className="text-sm text-gray-600">{room.id}</p>
-              </div>
-              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                room.type === 'Lecture Hall' ? 'bg-blue-100 text-blue-800' :
-                room.type === 'Laboratory' ? 'bg-green-100 text-green-800' :
-                room.type === 'Seminar Room' ? 'bg-purple-100 text-purple-800' :
-                'bg-orange-100 text-orange-800'
-              }`}>
-                {room.type}
-              </span>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Capacity:</span>
-                <span className="text-gray-900 font-medium">{room.capacity} seats</span>
-              </div>
-              <div className="text-sm">
-                <span className="text-gray-600">Amenities:</span>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {room.amenities.slice(0, 3).map(amenity => (
-                    <span key={amenity} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                      {amenity}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        ))}
+    );
+  }
+  
+  if (!masterTimetable) {
+    return (
+      <div className="bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded-lg shadow-sm text-center">
+        <AlertTriangle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-yellow-900 mb-2">Timetable Not Yet Available</h3>
+        <p className="text-yellow-700">The master timetable has not been generated by the administrator. Please check back later.</p>
       </div>
-    </div>
-  );
-};
+    );
+  }
+  
+  if (!studentSchedule || studentData.courses.length === 0) {
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-sm border text-center">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">No Courses Enrolled</h3>
+        <p className="text-gray-600">You are not enrolled in any courses, so no timetable can be displayed.</p>
+      </div>
+    );
+  }
 
-const TimetableTab = ({ studentData, data }) => {
-  // Mock timetable for demonstration
-  const timeSlots = ['9:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-1:00', '2:00-3:00', '3:00-4:00'];
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+  const { workingDays, timeSlots } = masterTimetable.settings;
 
   return (
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-lg shadow-sm border">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Weekly Timetable</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Weekly Timetable for {studentData.name}</h3>
         
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                <th className="border border-gray-300 p-3 bg-gray-50 text-left">Time</th>
-                {days.map(day => (
-                  <th key={day} className="border border-gray-300 p-3 bg-gray-50 text-center">
+                <th className="border border-gray-300 p-3 bg-gray-50 text-left min-w-[120px]">Time</th>
+                {workingDays.map(day => (
+                  <th key={day} className="border border-gray-300 p-3 bg-gray-50 text-center min-w-[200px]">
                     {day}
                   </th>
                 ))}
@@ -424,30 +378,37 @@ const TimetableTab = ({ studentData, data }) => {
             <tbody>
               {timeSlots.map(time => (
                 <tr key={time}>
-                  <td className="border border-gray-300 p-3 font-medium bg-gray-50">
-                    {time}
-                  </td>
-                  {days.map(day => (
-                    <td key={`${day}-${time}`} className="border border-gray-300 p-3 text-center">
-                      {/* Mock schedule data */}
-                      {Math.random() > 0.5 ? (
-                        <div className="bg-blue-100 text-blue-800 p-2 rounded text-sm">
-                          <div className="font-medium">Course Name</div>
-                          <div className="text-xs">Room A101</div>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                  ))}
+                  <td className="border border-gray-300 p-3 font-medium bg-gray-50 align-top">{time}</td>
+                  {workingDays.map(day => {
+                    const classInfo = studentSchedule[day]?.[time];
+                    return (
+                      <td key={`${day}-${time}`} className="border border-gray-300 p-2 text-center align-top">
+                        {classInfo ? (
+                          <motion.div 
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="bg-blue-50 border border-blue-200 rounded p-3 text-left h-full"
+                          >
+                            <div className="font-semibold text-blue-900 text-sm">{classInfo.course.name}</div>
+                            <div className="text-xs text-blue-700 mt-1 flex items-center space-x-1">
+                              <User size={12}/> 
+                              <span>{classInfo.teacher.name}</span>
+                            </div>
+                            <div className="text-xs text-blue-600 mt-1 flex items-center space-x-1">
+                              <MapPin size={12}/>
+                              <span>{classInfo.room.name}</span>
+                            </div>
+                          </motion.div>
+                        ) : (
+                          <div className="text-gray-400 h-full flex items-center justify-center">-</div>
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-
-        <div className="mt-4 text-sm text-gray-600">
-          <p>* Timetable generation feature coming soon. This is a preview layout.</p>
         </div>
       </div>
     </div>

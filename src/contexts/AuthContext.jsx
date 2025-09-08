@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useData } from './DataContext';
 
 const AuthContext = createContext();
 
@@ -13,6 +14,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { data } = useData();
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
@@ -36,13 +38,17 @@ export const AuthProvider = ({ children }) => {
       return { success: true, user: adminUser };
     }
     
-    // Student login (any other username with password 'student')
-    if (credentials.password === 'student') {
+    // Student login by name
+    const foundStudent = data.students.find(
+      student => student.name.toLowerCase() === credentials.username.toLowerCase()
+    );
+
+    if (foundStudent && credentials.password === 'student') {
       const studentUser = {
-        id: credentials.username,
-        username: credentials.username,
+        id: foundStudent.id,
+        username: foundStudent.name,
         role: 'student',
-        name: `Student ${credentials.username}`
+        name: foundStudent.name
       };
       setUser(studentUser);
       localStorage.setItem('user', JSON.stringify(studentUser));

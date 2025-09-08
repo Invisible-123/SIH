@@ -13,14 +13,18 @@ export const useData = () => {
 
 // Generate initial mock data
 const generateMockData = () => {
+  const courseNames = [
+    'Advanced Mathematics', 'Physics Fundamentals', 'Chemistry Laboratory',
+    'Computer Science Basics', 'Psychology Introduction', 'Economics Theory',
+    'Environmental Science', 'Business Analytics', 'Data Structures',
+    'Machine Learning', 'Digital Marketing', 'Philosophy Ethics'
+  ];
+  // Shuffle the array to ensure random assignment, but keep names unique per generation.
+  const shuffledCourseNames = faker.helpers.shuffle(courseNames);
+
   const courses = Array.from({ length: 12 }, (_, i) => ({
     id: `C${String(i + 1).padStart(3, '0')}`,
-    name: faker.helpers.arrayElement([
-      'Advanced Mathematics', 'Physics Fundamentals', 'Chemistry Laboratory',
-      'Computer Science Basics', 'Psychology Introduction', 'Economics Theory',
-      'Environmental Science', 'Business Analytics', 'Data Structures',
-      'Machine Learning', 'Digital Marketing', 'Philosophy Ethics'
-    ]),
+    name: shuffledCourseNames[i], // This ensures each course has a unique name
     credits: faker.helpers.arrayElement([2, 3, 4]),
     type: faker.helpers.arrayElement(['Core', 'Elective', 'Practical']),
     department: faker.helpers.arrayElement(['Science', 'Arts', 'Commerce', 'Engineering'])
@@ -65,7 +69,28 @@ const generateMockData = () => {
 export const DataProvider = ({ children }) => {
   const [data, setData] = useState(() => {
     const savedData = localStorage.getItem('timetableData');
-    return savedData ? JSON.parse(savedData) : generateMockData();
+    let initialData = savedData ? JSON.parse(savedData) : generateMockData();
+
+    // This cleaning step ensures that no matter where the data comes from (stale localStorage or generation),
+    // the courses array used by the app has unique names, preventing the key error.
+    const uniqueCourses = [];
+    const seenCourseNames = new Set();
+    if (initialData && initialData.courses) {
+      for (const course of initialData.courses) {
+        if (!seenCourseNames.has(course.name)) {
+          uniqueCourses.push(course);
+          seenCourseNames.add(course.name);
+        }
+      }
+      initialData.courses = uniqueCourses;
+    }
+    
+    return initialData;
+  });
+
+  const [masterTimetable, setMasterTimetable] = useState(() => {
+    const savedTimetable = localStorage.getItem('masterTimetable');
+    return savedTimetable ? JSON.parse(savedTimetable) : null;
   });
 
   const [filters, setFilters] = useState({
@@ -78,6 +103,14 @@ export const DataProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('timetableData', JSON.stringify(data));
   }, [data]);
+
+  useEffect(() => {
+    if (masterTimetable) {
+      localStorage.setItem('masterTimetable', JSON.stringify(masterTimetable));
+    } else {
+      localStorage.removeItem('masterTimetable');
+    }
+  }, [masterTimetable]);
 
   const addEntity = (type, entity) => {
     const newId = generateId(type, data[type]);
@@ -112,6 +145,74 @@ export const DataProvider = ({ children }) => {
       return num > max ? num : max;
     }, 0);
     return `${prefix}${String(maxId + 1).padStart(3, '0')}`;
+  };
+
+  const generateAndSetMasterTimetable = (settings) => {
+    const { courses, teachers, rooms } = data;
+    const { workingDays, timeSlots } = settings;
+
+    const schedule = {};
+    const occupied = {}; // Tracks teacher/room occupation: { 'Monday-9:00-10:00': { teachers: [id], rooms: [id] } }
+    let conflicts = 0;
+    let placedClasses = 0;
+
+    workingDays.forEach(day => {
+      schedule[day] = {};
+      timeSlots.forEach(slot => {
+        schedule[day][slot] = null;
+        occupied[`${day}-${slot}`] = { teachers: [], rooms: [] };
+      });
+    });
+
+    courses.forEach(course => {
+      let placed = false;
+      const potentialTeachers = teachers.filter(t => t.subjects.includes(course.name));
+      if (potentialTeachers.length === 0) return;
+
+      const shuffledDays = [...workingDays].sort(() => Math.random() - 0.5);
+      const shuffledSlots = [...timeSlots].sort(() => Math.random() - 0.5);
+
+      for (const day of shuffledDays) {
+        if (placed) break;
+        for (const slot of shuffledSlots) {
+          if (placed) break;
+
+          const slotKey = `${day}-${slot}`;
+          const availableTeachers = potentialTeachers.filter(
+            t => !occupied[slotKey].teachers.includes(t.id) && t.availability.includes(day)
+          );
+          const availableRooms = rooms.filter(r => !occupied[slotKey].rooms.includes(r.id));
+
+          if (availableTeachers.length > 0 && availableRooms.length > 0) {
+            const teacher = availableTeachers[0];
+            const room = availableRooms[0];
+
+            schedule[day][slot] = { course, teacher, room };
+            occupied[slotKey].teachers.push(teacher.id);
+            occupied[slotKey].rooms.push(room.id);
+            placed = true;
+            placedClasses++;
+          }
+        }
+      }
+
+      if (!placed) {
+        conflicts++;
+      }
+    });
+
+    const totalPossibleSlots = workingDays.length * timeSlots.length * rooms.length;
+    const metadata = {
+      totalSlots: workingDays.length * timeSlots.length,
+      placedClasses,
+      utilization: totalPossibleSlots > 0 ? ((placedClasses / totalPossibleSlots) * 100).toFixed(1) + '%' : '0%',
+      conflicts,
+      generatedAt: new Date().toISOString(),
+      algorithm: 'Constraint-Based Heuristic'
+    };
+
+    setMasterTimetable({ schedule, metadata, settings });
+    return { schedule, metadata };
   };
 
   const getFilteredData = (type) => {
@@ -163,12 +264,14 @@ export const DataProvider = ({ children }) => {
   const value = {
     data,
     filters,
+    masterTimetable,
     addEntity,
     updateEntity,
     deleteEntity,
     getFilteredData,
     updateFilter,
-    clearFilters
+    clearFilters,
+    generateAndSetMasterTimetable,
   };
 
   return (

@@ -1,33 +1,17 @@
 import React, { useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, Users, MapPin, BookOpen, Zap, Download, RefreshCw } from 'lucide-react';
+import { Calendar, Users, MapPin, BookOpen, Zap, Download, RefreshCw } from 'lucide-react';
 
 const TimetableGenerator = () => {
-  const { data } = useData();
+  const { data, masterTimetable, generateAndSetMasterTimetable } = useData();
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedTimetable, setGeneratedTimetable] = useState(null);
+  
   const [generationSettings, setGenerationSettings] = useState({
     startTime: '09:00',
     endTime: '17:00',
-    slotDuration: 60,
-    breakDuration: 15,
     workingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
   });
-
-  const generateTimetable = async () => {
-    setIsGenerating(true);
-    
-    // Simulate AI processing time
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // Mock timetable generation
-    const timeSlots = generateTimeSlots();
-    const mockTimetable = createMockTimetable(timeSlots);
-    
-    setGeneratedTimetable(mockTimetable);
-    setIsGenerating(false);
-  };
 
   const generateTimeSlots = () => {
     const slots = [];
@@ -43,41 +27,21 @@ const TimetableGenerator = () => {
     return slots;
   };
 
-  const createMockTimetable = (timeSlots) => {
-    const timetable = {};
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
-    generationSettings.workingDays.forEach(day => {
-      timetable[day] = {};
-      timeSlots.forEach(slot => {
-        if (Math.random() > 0.3) { // 70% chance of having a class
-          const randomCourse = data.courses[Math.floor(Math.random() * data.courses.length)];
-          const randomTeacher = data.teachers[Math.floor(Math.random() * data.teachers.length)];
-          const randomRoom = data.rooms[Math.floor(Math.random() * data.rooms.length)];
-          
-          timetable[day][slot] = {
-            course: randomCourse,
-            teacher: randomTeacher,
-            room: randomRoom,
-            students: Math.floor(Math.random() * 40) + 20
-          };
-        }
-      });
+    const timeSlots = generateTimeSlots();
+    generateAndSetMasterTimetable({
+      ...generationSettings,
+      timeSlots
     });
     
-    return { schedule: timetable, timeSlots, metadata: generateMetadata() };
+    setIsGenerating(false);
   };
 
-  const generateMetadata = () => {
-    return {
-      totalSlots: Object.keys(generatedTimetable?.schedule || {}).reduce((acc, day) => 
-        acc + Object.keys(generatedTimetable?.schedule[day] || {}).length, 0
-      ),
-      utilization: '78%',
-      conflicts: 0,
-      generatedAt: new Date().toISOString(),
-      algorithm: 'AI-Optimized Constraint Satisfaction'
-    };
-  };
+  const workingDays = masterTimetable?.settings?.workingDays || generationSettings.workingDays;
+  const timeSlots = masterTimetable?.settings?.timeSlots || generateTimeSlots();
 
   return (
     <div className="space-y-6">
@@ -89,7 +53,7 @@ const TimetableGenerator = () => {
         </div>
         
         <div className="flex items-center space-x-4">
-          {generatedTimetable && (
+          {masterTimetable && (
             <button className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all">
               <Download size={20} />
               <span>Export Timetable</span>
@@ -99,7 +63,7 @@ const TimetableGenerator = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={generateTimetable}
+            onClick={handleGenerate}
             disabled={isGenerating}
             className="flex items-center space-x-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -111,7 +75,7 @@ const TimetableGenerator = () => {
             ) : (
               <>
                 <Zap size={20} />
-                <span>Generate Timetable</span>
+                <span>{masterTimetable ? 'Regenerate' : 'Generate'} Timetable</span>
               </>
             )}
           </motion.button>
@@ -125,8 +89,7 @@ const TimetableGenerator = () => {
         className="bg-white p-6 rounded-lg shadow-sm border"
       >
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Generation Settings</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
             <input
@@ -146,32 +109,6 @@ const TimetableGenerator = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Slot Duration (min)</label>
-            <select
-              value={generationSettings.slotDuration}
-              onChange={(e) => setGenerationSettings(prev => ({ ...prev, slotDuration: parseInt(e.target.value) }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value={45}>45 minutes</option>
-              <option value={60}>60 minutes</option>
-              <option value={90}>90 minutes</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Break Duration (min)</label>
-            <select
-              value={generationSettings.breakDuration}
-              onChange={(e) => setGenerationSettings(prev => ({ ...prev, breakDuration: parseInt(e.target.value) }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value={10}>10 minutes</option>
-              <option value={15}>15 minutes</option>
-              <option value={20}>20 minutes</option>
-            </select>
-          </div>
         </div>
       </motion.div>
 
@@ -182,14 +119,11 @@ const TimetableGenerator = () => {
           { label: 'Total Teachers', value: data.teachers.length, icon: Users, color: 'green' },
           { label: 'Total Rooms', value: data.rooms.length, icon: MapPin, color: 'purple' },
           { label: 'Total Students', value: data.students.length, icon: Users, color: 'orange' }
-        ].map((stat, index) => {
+        ].map((stat) => {
           const Icon = stat.icon;
           return (
             <motion.div
               key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
               className="bg-white p-6 rounded-lg shadow-sm border"
             >
               <div className="flex items-center justify-between">
@@ -223,24 +157,24 @@ const TimetableGenerator = () => {
               className="bg-blue-600 h-2 rounded-full"
               initial={{ width: "0%" }}
               animate={{ width: "100%" }}
-              transition={{ duration: 3 }}
+              transition={{ duration: 2, ease: "linear" }}
             />
           </div>
         </motion.div>
       )}
 
       {/* Generated Timetable */}
-      {generatedTimetable && !isGenerating && (
+      {masterTimetable && !isGenerating && (
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-white p-6 rounded-lg shadow-sm border"
         >
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">Generated Timetable</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Master Timetable</h3>
             <div className="flex items-center space-x-4 text-sm text-gray-600">
-              <span>Utilization: {generatedTimetable.metadata?.utilization}</span>
-              <span>Conflicts: {generatedTimetable.metadata?.conflicts}</span>
+              <span>Utilization: {masterTimetable.metadata?.utilization}</span>
+              <span>Conflicts: {masterTimetable.metadata?.conflicts}</span>
             </div>
           </div>
           
@@ -249,7 +183,7 @@ const TimetableGenerator = () => {
               <thead>
                 <tr>
                   <th className="border border-gray-300 p-3 bg-gray-50 text-left min-w-[120px]">Time</th>
-                  {generationSettings.workingDays.map(day => (
+                  {workingDays.map(day => (
                     <th key={day} className="border border-gray-300 p-3 bg-gray-50 text-center min-w-[200px]">
                       {day}
                     </th>
@@ -257,30 +191,31 @@ const TimetableGenerator = () => {
                 </tr>
               </thead>
               <tbody>
-                {generatedTimetable.timeSlots?.map(timeSlot => (
+                {timeSlots.map(timeSlot => (
                   <tr key={timeSlot}>
-                    <td className="border border-gray-300 p-3 font-medium bg-gray-50">
+                    <td className="border border-gray-300 p-3 font-medium bg-gray-50 align-top">
                       {timeSlot}
                     </td>
-                    {generationSettings.workingDays.map(day => {
-                      const classData = generatedTimetable.schedule[day]?.[timeSlot];
-                      
+                    {workingDays.map(day => {
+                      const classData = masterTimetable.schedule[day]?.[timeSlot];
                       return (
-                        <td key={`${day}-${timeSlot}`} className="border border-gray-300 p-2">
+                        <td key={`${day}-${timeSlot}`} className="border border-gray-300 p-2 align-top">
                           {classData ? (
-                            <div className="bg-blue-50 border border-blue-200 rounded p-3">
-                              <div className="font-medium text-blue-900 text-sm">
+                            <div className="bg-blue-50 border border-blue-200 rounded p-3 text-left">
+                              <div className="font-semibold text-blue-900 text-sm">
                                 {classData.course.name}
                               </div>
-                              <div className="text-xs text-blue-700 mt-1">
-                                {classData.teacher.name}
+                              <div className="text-xs text-blue-700 mt-1 flex items-center space-x-1">
+                                <Users size={12}/> 
+                                <span>{classData.teacher.name}</span>
                               </div>
-                              <div className="text-xs text-blue-600 mt-1">
-                                {classData.room.name} ({classData.students} students)
+                              <div className="text-xs text-blue-600 mt-1 flex items-center space-x-1">
+                                <MapPin size={12}/>
+                                <span>{classData.room.name}</span>
                               </div>
                             </div>
                           ) : (
-                            <div className="text-center text-gray-400 py-4">-</div>
+                            <div className="text-center text-gray-400 h-full flex items-center justify-center">-</div>
                           )}
                         </td>
                       );
@@ -290,41 +225,8 @@ const TimetableGenerator = () => {
               </tbody>
             </table>
           </div>
-          
-          <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <h4 className="font-medium text-green-900 mb-2">Generation Summary</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-green-800">
-              <div>Algorithm: AI-Optimized CSP</div>
-              <div>Conflicts Resolved: 100%</div>
-              <div>Generated: {new Date().toLocaleString()}</div>
-            </div>
-          </div>
         </motion.div>
       )}
-
-      {/* Features */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white p-6 rounded-lg shadow-sm border"
-      >
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">AI Features</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[
-            { title: 'Conflict Resolution', desc: 'Automatically resolves scheduling conflicts' },
-            { title: 'NEP 2020 Compliance', desc: 'Supports multidisciplinary course selection' },
-            { title: 'Resource Optimization', desc: 'Maximizes room and teacher utilization' },
-            { title: 'Preference Learning', desc: 'Learns from previous scheduling patterns' },
-            { title: 'Real-time Updates', desc: 'Dynamically adjusts to changes' },
-            { title: 'Export Options', desc: 'Multiple export formats available' }
-          ].map((feature, index) => (
-            <div key={feature.title} className="p-4 border border-gray-200 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-1">{feature.title}</h4>
-              <p className="text-sm text-gray-600">{feature.desc}</p>
-            </div>
-          ))}
-        </div>
-      </motion.div>
     </div>
   );
 };
